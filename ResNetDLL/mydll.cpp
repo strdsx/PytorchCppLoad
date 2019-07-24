@@ -16,10 +16,9 @@
 #include <fstream>
 #include <memory>
 
-void Classifier::init()
+void Classifier::init(std::string model_path)
 {
 	// script module load
-	std::string model_path = "model/script_model_148.pt";
 	std::ifstream mymodel(model_path, std::ifstream::binary);
 	ScriptModule = torch::jit::load(mymodel);
 

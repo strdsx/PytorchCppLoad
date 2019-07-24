@@ -21,9 +21,8 @@
 class Classifier
 {
 public:
-	PYTORCH_API void init();
+	PYTORCH_API void init(std::string model_path);
 	PYTORCH_API int classify(cv::Mat img);
-	// PYTORCH_API std::shared_ptr<torch::jit::script::Module> ModelLoad(std::string model_path);
 
 private:
 	// pytorch model
