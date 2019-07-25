@@ -23,6 +23,9 @@
 #define MIN(X,Y) ((X) < (Y) ? (X) : (Y))
 #define MAX(X,Y) ((X) > (Y) ? (X) : (Y))
 
+
+
+
 int main(int argc, const char* argv[]) 
 {
 #ifdef RESNET
@@ -81,6 +84,7 @@ int main(int argc, const char* argv[])
 	std::cout << "\npredict value : " << torch::max(output) << std::endl;
 	std::cout << "predict index : " << predict.item() << std::endl;
 
+
 #elif RETINA
 	std::string model_path;
 	std::string img_path;
@@ -98,9 +102,8 @@ int main(int argc, const char* argv[])
 	std::ifstream mymodel(model_path, std::ifstream::binary);
 	std::shared_ptr<torch::jit::script::Module> module = torch::jit::load(mymodel);
 
-	// Loading Model
 	assert(module != nullptr);
-	// std::cout << "\nSuccess Model Loading\n" << std::endl;
+	std::cout << "\nSuccess Model Loading..\n";
 
 	// Model to GPU
 	module->to(at::kCUDA);
@@ -112,8 +115,10 @@ int main(int argc, const char* argv[])
 
 	cv::Mat img_float;
 	img.convertTo(img_float, CV_32F, 1.0f / 255.0f);
+	// 여기서 normalization 해야할 것 같음...
 
 	// Resize & Scaling
+	std::cout << "\n=== Resize & Scaling === \n";
 	int min_side = 608;
 	int max_side = 1024;
 	int rows = img_float.rows; //34
@@ -125,7 +130,7 @@ int main(int argc, const char* argv[])
 
 	double scale = (double)min_side / (double)smallest_side;
 	std::cout << "smallest_side : " << smallest_side << std::endl;
-	printf("scale : %.14f\n", scale);
+	printf("before scale : %.14f\n", scale);
 	std::cout << "largest_side : " << largest_side << std::endl;
 
 	if ((largest_side * scale) > max_side) {
@@ -133,10 +138,11 @@ int main(int argc, const char* argv[])
 	}
 	printf("after scale : %.14f\n", scale);
 
-	cv::resize(img_float, img_float, cv::Size((int)(cols*scale), (int)(rows*scale)));
-	std::cout << "Success Resize...\n";
+	cv::resize(img_float, img_float, cv::Size((int)round(cols*scale), (int)round(rows*scale)));
+
 
 	// Padding (Resize rows, cols)
+	std::cout << "\n=== Padding ====\n";
 	rows = img_float.rows;
 	cols = img_float.cols;
 	int pad_w = 32 - (int)(rows % 32);
@@ -145,6 +151,7 @@ int main(int argc, const char* argv[])
 	std::cout << "pad_w : " << pad_w << std::endl;
 	std::cout << "pad_h : " << pad_h << std::endl;
 
+	// C++ OpenCV Zero Padding
 	cv::copyMakeBorder(img_float, img_float,
 		int(pad_w / 2),
 		int(pad_w / 2),
@@ -153,9 +160,8 @@ int main(int argc, const char* argv[])
 		cv::BORDER_CONSTANT,
 		cv::Scalar(0,0,0));
 
-	std::cout << "Padded Image size" << img_float.size() << std::endl;
+	std::cout << "Padded Image cols, rows : " << img_float.cols << ", " << img_float.rows << std::endl;
 
-	// cols : 132, rows : 34
 	// Mat image --> (1, 34, 132, 3)
 	torch::Tensor img_tensor = torch::from_blob(img_float.data,
 		{1, img_float.rows, img_float.cols, 3},
@@ -164,10 +170,7 @@ int main(int argc, const char* argv[])
 	// --> (1, 3, 34, 132)
 	img_tensor = img_tensor.permute({ 0, 3, 1, 2 });
 
-
-
 	// Normalization
-	std::cout << img_tensor[0][0].sizes() << std::endl;
 	img_tensor[0][0] = img_tensor[0][0].sub(0.485).div(0.229);
 	img_tensor[0][1] = img_tensor[0][1].sub(0.456).div(0.224);
 	img_tensor[0][2] = img_tensor[0][2].sub(0.406).div(0.225);
@@ -185,10 +188,39 @@ int main(int argc, const char* argv[])
 	torch::Tensor classification = outputs->elements()[1].toTensor().clone();
 	torch::Tensor transformed_anchors = outputs->elements()[2].toTensor().clone();
 
-	std::cout << "=== Output === \n";
-	std::cout << scores.sizes() << std::endl;
-	std::cout << classification.sizes() << std::endl;
-	std::cout << transformed_anchors.sizes() << std::endl;
+	std::cout << "\n=== Output === \n";
+	std::cout << "scores : " << scores.sizes() << std::endl;
+	std::cout << "classification : " << classification.sizes() << std::endl;
+	std::cout << "transformed_anchors : "<< transformed_anchors.sizes() << std::endl;
+
+	int idxs = 0;
+	for (int64_t i = 0; i < scores.size(0); i++) {
+		if (scores[i].item<float>() > 0.5) {
+			idxs = i;
+		}
+	}
+	std::cout << "idxs = " << idxs << std::endl;
+
+	// Torch Tensor ==> std::vector
+	//std::vector<float> vector_scores;
+	//for (int64_t i = 0; i < scores.size(0); i++) {
+	//	vector_scores.push_back(scores[i].item<float>());
+	//}
+
+	//// Search score > 0.5
+	//int idxs = 0;
+	//int cnt = 0;
+	//for (int i = 0; i < vector_scores.size(); i++)
+	//{
+	//	if (vector_scores[i] > 0.5) {
+	//		idxs = i;
+	//		cnt++;
+	//	}
+	//}
+	//std::cout << "idxs = " << idxs << std::endl;
+	//std::cout << "cnt = " << cnt << std::endl;
+
+
 
 	// Argmax
 	/*torch::Tensor predict = torch::argmax(output);
