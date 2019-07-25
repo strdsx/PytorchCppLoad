@@ -25,7 +25,7 @@
         - Input Image는 normalization - resize & scaling - padding --> Tensor로 변경
         - **현재 코드는 resize, padding, Tensor로 변환 이후 normalization을 진행해서 input tensor형태가 다름**
             - C++에서 OpenCV로 바로 Normalization 때리는 방법 찾는중
-        - Output은 3개의 Tensor가 Tuple 형태 Tuple(Tensor, Tensor, Tensor) --> 코드 참고
+        - Output : Tuple(Tensor, Tensor, Tensor) --> 코드 참고
 
 
 ## ResNetDLL : DLL Export
