@@ -13,16 +13,15 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 
-
-
 # pragma comment(lib, "opencv_world340.lib")
 
 #define INPUTSIZE 32
-#define RESNET 1
+// #define RESNET 1
 // #define TEST 1
-// #define RETINA 1
+#define RETINA 1
 
-
+#define MIN(X,Y) ((X) < (Y) ? (X) : (Y))
+#define MAX(X,Y) ((X) > (Y) ? (X) : (Y))
 
 int main(int argc, const char* argv[]) 
 {
@@ -60,7 +59,7 @@ int main(int argc, const char* argv[])
 	torch::Tensor img_tensor = torch::from_blob(img_float.data, { 1, INPUTSIZE, INPUTSIZE, 3},
 		torch::ScalarType::Float).to(torch::kCUDA);
 
-	img_tensor = img_tensor.to(torch::kFloat);
+	img_tensor = img_tensor.to(torch::kFloat32);
 	img_tensor = img_tensor.permute({ 0, 3, 1, 2 });	
 
 	std::cout << "\nimg tensor loaded...\n";
@@ -83,12 +82,19 @@ int main(int argc, const char* argv[])
 	std::cout << "predict index : " << predict.item() << std::endl;
 
 #elif RETINA
-	if (argc != 3) {
-		std::cerr << "usage: example-app <path-to-exported-script-module>\n";
-		return -1;
-}
+	std::string model_path;
+	std::string img_path;
 
-	std::string model_path = argv[1];
+	if (argc != 3) {
+		model_path = "model/tuple_script_retinanet_0.pt";
+		img_path = "img/1025.jpg";
+	}
+	else {
+		model_path = argv[1];
+		img_path = argv[2];
+	}
+
+	// Script Module Load.
 	std::ifstream mymodel(model_path, std::ifstream::binary);
 	std::shared_ptr<torch::jit::script::Module> module = torch::jit::load(mymodel);
 
@@ -100,55 +106,96 @@ int main(int argc, const char* argv[])
 	module->to(at::kCUDA);
 	module->eval();
 
-	std::string img_path = argv[2];
-
 	cv::Mat img = cv::imread(img_path, 1);
-	std::cout << "== Origin image size : " << img.size() << " ==" << std::endl;
+	// std::cout << "== Origin image size : " << img.size() << " ==" << std::endl;
 	cv::cvtColor(img, img, cv::COLOR_BGR2RGB);
 
-	// Normalization
 	cv::Mat img_float;
-	img.convertTo(img_float, CV_32F, 1.0f/255.0f);
-	// cv::resize(img_float, img_float, cv::Size(1056, 320));
-	std::cout << "== Input image size : " << img_float.size() << " ==" << std::endl;
+	img.convertTo(img_float, CV_32F, 1.0f / 255.0f);
 
-	// (1, 40, 134, 3)
-	torch::Tensor img_tensor = torch::from_blob(img_float.data, {1, img_float.cols, img_float.rows, 3},
+	// Resize & Scaling
+	int min_side = 608;
+	int max_side = 1024;
+	int rows = img_float.rows; //34
+	int cols = img_float.cols; //132
+	int cns = img_float.channels();
+
+	int smallest_side = MIN(rows, cols);
+	int largest_side = MAX(rows, cols);
+
+	double scale = (double)min_side / (double)smallest_side;
+	std::cout << "smallest_side : " << smallest_side << std::endl;
+	printf("scale : %.14f\n", scale);
+	std::cout << "largest_side : " << largest_side << std::endl;
+
+	if ((largest_side * scale) > max_side) {
+		scale = (double)max_side / (double)largest_side;
+	}
+	printf("after scale : %.14f\n", scale);
+
+	cv::resize(img_float, img_float, cv::Size((int)(cols*scale), (int)(rows*scale)));
+	std::cout << "Success Resize...\n";
+
+	// Padding (Resize rows, cols)
+	rows = img_float.rows;
+	cols = img_float.cols;
+	int pad_w = 32 - (int)(rows % 32);
+	int pad_h = 32 - (int)(cols % 32);
+
+	std::cout << "pad_w : " << pad_w << std::endl;
+	std::cout << "pad_h : " << pad_h << std::endl;
+
+	cv::copyMakeBorder(img_float, img_float,
+		int(pad_w / 2),
+		int(pad_w / 2),
+		int(pad_h / 2),
+		int(pad_h / 2),
+		cv::BORDER_CONSTANT,
+		cv::Scalar(0,0,0));
+
+	std::cout << "Padded Image size" << img_float.size() << std::endl;
+
+	// cols : 132, rows : 34
+	// Mat image --> (1, 34, 132, 3)
+	torch::Tensor img_tensor = torch::from_blob(img_float.data,
+		{1, img_float.rows, img_float.cols, 3},
 		torch::kFloat32).to(torch::kCUDA);
 
+	// --> (1, 3, 34, 132)
 	img_tensor = img_tensor.permute({ 0, 3, 1, 2 });
 
+
+
+	// Normalization
+	std::cout << img_tensor[0][0].sizes() << std::endl;
 	img_tensor[0][0] = img_tensor[0][0].sub(0.485).div(0.229);
 	img_tensor[0][1] = img_tensor[0][1].sub(0.456).div(0.224);
 	img_tensor[0][2] = img_tensor[0][2].sub(0.406).div(0.225);
 
-	img_tensor = img_tensor.permute({ 0, 2, 3, 1 });
-
-	std::cout << "\n== Input Tensor Shape : " << img_tensor.sizes() << " ==" << std::endl;
-	std::cout << "\n== Input Tensor Type : " << img_tensor.type() << " ==" << std::endl;
-	
-	std::cout << img_tensor << std::endl;
-
-	std::cout << "\nimg tensor loaded...\n";
+	std::cout << "\n== Final Input Tensor Shape : " << img_tensor.sizes() << " ==" << std::endl;
+	std::cout << "\n== Final Input Tensor Type : " << img_tensor.type() << " ==" << std::endl;
 
 	std::vector<torch::jit::IValue> inputs;
 	inputs.emplace_back(img_tensor);
-	// inputs.push_back(img_tensor);
 
-	torch::Tensor output = module->forward(inputs).toTensor().clone().squeeze(0);
-	std::cout << "output success ...\n";
+	
+	// 3 Output Tensor
+	auto outputs = module->forward(inputs).toTuple();
+	torch::Tensor scores = outputs->elements()[0].toTensor().clone();
+	torch::Tensor classification = outputs->elements()[1].toTensor().clone();
+	torch::Tensor transformed_anchors = outputs->elements()[2].toTensor().clone();
 
-	std::cout << output << std::endl;
+	std::cout << "=== Output === \n";
+	std::cout << scores.sizes() << std::endl;
+	std::cout << classification.sizes() << std::endl;
+	std::cout << transformed_anchors.sizes() << std::endl;
 
-	// std::cout << output << std::endl;
-	/*std::cout << "\n== Output Tensor Shape : " << output.sizes() << " ==" << std::endl;
-	std::cout << "\n== Output Tensor Type : " << output.type() << " ==" << std::endl;*/
-
-	torch::Tensor predict = torch::argmax(output);
+	// Argmax
+	/*torch::Tensor predict = torch::argmax(output);
 	std::cout << "\npredict value : " << torch::max(output) << std::endl;
-	std::cout << "predict index : " << predict << std::endl;
+	std::cout << "predict index : " << predict << std::endl;*/
 #elif TEST
-	// jit modelÀ» ·Îµù.
+	// jit modelì„ ë¡œë”©.
 	std::string model_path = "model/script_model_148.pt";
 	std::ifstream mymodel(model_path, std::ifstream::binary);
 	std::shared_ptr<torch::jit::script::Module> module = torch::jit::load(mymodel);
