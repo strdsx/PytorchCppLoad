@@ -21,13 +21,15 @@
         - (신기하게 mat -> tensor 변환과정에 바로 Input Shape에 맞춰 <code>{1, 3, INPUTSIZE, INPUTSIZE}</code>와 같이 사용하였는데, Input 형태가 달라져서 모델이 정상적으로 예측하지 않음
         그래서 위와 같이 permutation함. 이유는 모름...)
     - RetinaNet C++ Load 진행중
-        - ResNet과 같이 단순히 Image Tensor를 받아 Classification을 하는 문제가 아니라 복잡함(RetinaNet output은 3개)
-        - 현재 Input Tensor 형태를 맞추는 작업 진행중(코드는 Input Tensor Normalization 까지임)
-        - Output이 3개라서 C++에서 어떻게 해결하는지도 찾아봐야함
+        - RetinaNet의 경우 Input Tensor 코드 구현중...
+        - Input Image는 normalization - resize & scaling - padding --> Tensor로 변경
+        - **현재 코드는 resize, padding 이후 normalization을 진행해서 input tensor형태가 다름**
+            - C++에서 OpenCV로 바로 Normalization 때리는 방법 찾는중
+        - Output은 3개의 Tensor가 Tuple 형태 Tuple(Tensor, Tensor, Tensor) --> 코드 참고
 
 
 ## ResNetDLL : DLL Exports
-1. DLL 크게 2가지 클래스로 구성됨
+1. DLL 크게 2가지 클래스로 구성됨S
     - <code> void Classifier::init()</code> --> Script Module Initialization
     - <code> int Classifier::classify(cv::Mat img)</code> --> Mat image를 받아 예측값을 반환
 1. Tutorial과 동일하게 진행...
