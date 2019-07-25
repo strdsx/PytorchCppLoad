@@ -23,13 +23,13 @@
     - RetinaNet C++ Load 진행중
         - RetinaNet의 경우 Input Tensor 코드 구현중...
         - Input Image는 normalization - resize & scaling - padding --> Tensor로 변경
-        - **현재 코드는 resize, padding 이후 normalization을 진행해서 input tensor형태가 다름**
+        - **현재 코드는 resize, padding, Tensor로 변환 이후 normalization을 진행해서 input tensor형태가 다름**
             - C++에서 OpenCV로 바로 Normalization 때리는 방법 찾는중
         - Output은 3개의 Tensor가 Tuple 형태 Tuple(Tensor, Tensor, Tensor) --> 코드 참고
 
 
-## ResNetDLL : DLL Exports
-1. DLL 크게 2가지 클래스로 구성됨S
+## ResNetDLL : DLL Export
+1. DLL 크게 2가지 클래스로 구성됨
     - <code> void Classifier::init()</code> --> Script Module Initialization
     - <code> int Classifier::classify(cv::Mat img)</code> --> Mat image를 받아 예측값을 반환
 1. Tutorial과 동일하게 진행...
@@ -37,7 +37,7 @@
     - 저장 경로 : ResNetDLL/build/Release/..
 
 
-## DLL_Test : DLL Import
+## DLL_Test : DLL Imports
 1. 생성된 ResNet.dll, ResNet.lib를 bin, lib 폴더에 저장 후 Visual Studio 에서 환경 경로 설정
 1. libtorch 환경도 **DLL Exports**와 동일하게 경로 설정
 1. Build가 성공하면 "DLL_Test/build/Release/"에 필요한 dll 파일 이동
