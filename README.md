@@ -37,7 +37,7 @@
     - 저장 경로 : ResNetDLL/build/Release/..
 
 
-## DLL_Test : DLL Imports
+## DLL_Test : DLL Import
 1. 생성된 ResNet.dll, ResNet.lib를 bin, lib 폴더에 저장 후 Visual Studio 에서 환경 경로 설정
 1. libtorch 환경도 **DLL Exports**와 동일하게 경로 설정
 1. Build가 성공하면 "DLL_Test/build/Release/"에 필요한 dll 파일 이동
