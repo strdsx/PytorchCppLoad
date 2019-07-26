@@ -110,15 +110,29 @@ int main(int argc, const char* argv[])
 	module->eval();
 
 	cv::Mat img = cv::imread(img_path, 1);
+	cv::Mat result = img.clone();
 	// std::cout << "== Origin image size : " << img.size() << " ==" << std::endl;
 	cv::cvtColor(img, img, cv::COLOR_BGR2RGB);
 
 	cv::Mat img_float;
 	img.convertTo(img_float, CV_32F, 1.0f / 255.0f);
 
-	/////////////////////////////////////
-	// 여기서 normalization ??
-	/////////////////////////////////////
+	std::cout << "\n=== Normalization ===\n";
+	
+	// OpenCV Normalization
+	//for (int y = 0; y < img_float.rows; y++) {
+	//	float*pointer_img_float = img_float.ptr<float>(y);
+
+	//	for (int x = 0; x < img_float.cols; x++) {
+	//		/*std::cout << 
+	//			pointer_img_float[x + 0] << ", " <<
+	//			pointer_img_float[x + 1] << ", " <<
+	//			pointer_img_float[x + 2] << std::endl;*/
+	//		pointer_img_float[x * 3 + 0] = (float)((float)(pointer_img_float[x * 3 + 0] - 0.485) / 0.229);
+	//		pointer_img_float[x * 3 + 1] = (float)((float)(pointer_img_float[x * 3 + 1] - 0.456) / 0.224);
+	//		pointer_img_float[x * 3 + 2] = (float)((float)(pointer_img_float[x * 3 + 2] - 0.406) / 0.225);
+	//	}
+	//}
 
 	// Resize & Scaling
 	std::cout << "\n=== Resize & Scaling === \n";
@@ -174,6 +188,7 @@ int main(int argc, const char* argv[])
 
 	// --> (1, 3, 34, 132)
 	img_tensor = img_tensor.permute({ 0, 3, 1, 2 });
+	// std::cout << img_tensor << std::endl;
 
 	// Normalization
 	img_tensor[0][0] = img_tensor[0][0].sub(0.485).div(0.229);
@@ -199,7 +214,7 @@ int main(int argc, const char* argv[])
 	std::cout << "transformed_anchors : "<< transformed_anchors.sizes() << std::endl;
 
 
-	// idxs list (찾은 클래스 개수)
+	// Number of Objects
 	std::vector<int> idxs_vector;
 	for (int64_t i = 0; i < scores.size(0); i++) {
 		if (scores[i].item<float>() > 0.5) {
@@ -207,15 +222,20 @@ int main(int argc, const char* argv[])
 		}
 	}
 
+	
 	cv::Rect bbox;
-	cv::Mat result_img;
-	cv::resize(img, result_img, cv::Size(result_cols, result_rows));
+
+	// Number of Objects
+	cv::resize(result, result, cv::Size(result_cols, result_rows));
 	for (int i = 0; i < idxs_vector.size(); i++)
 	{
+		// Object Position
 		int x1 = transformed_anchors[idxs_vector[i]][0].item<int>();
 		int y1 = transformed_anchors[idxs_vector[i]][1].item<int>();
 		int x2 = transformed_anchors[idxs_vector[i]][2].item<int>();
 		int y2 = transformed_anchors[idxs_vector[i]][3].item<int>();
+
+		// Predicted Index
 		int class_idx = classification[idxs_vector[i]].item<int>();
 
 		bbox.x = x1;
@@ -228,12 +248,13 @@ int main(int argc, const char* argv[])
 			bbox.width << ", " <<
 			bbox.height << std::endl;
 
-		// Test
-		cv::rectangle(result_img, bbox, cv::Scalar(0, 0, 255));
-		cv::putText(result_img, std::to_string(class_idx), cv::Point(bbox.x - 5, bbox.y - 5), 0, 1, cv::Scalar(0, 0, 255));
+		// Drawing
+		cv::rectangle(result, bbox, cv::Scalar(0, 0, 255));
+		cv::putText(result, std::to_string(class_idx),
+			cv::Point(bbox.x - 5, bbox.y - 5), 0, 1, cv::Scalar(0, 0, 255));
 	}
 
-	cv::imshow("result image", result_img);
+	cv::imshow("result image", result);
 	cv::waitKey();
 	cv::destroyAllWindows();
 
