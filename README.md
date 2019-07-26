@@ -15,8 +15,8 @@
         - libtorch 다운로드 [download libtorch](https://pytorch.org/)
         - 다운로드 완료 후 [Pytorch Tutorials](https://pytorch.org/tutorials/advanced/cpp_export.html) 참고하여 build
     - 나의 Model Input Tensor 형태에 맞춰 Normalization, resize 진행 (Python Pytorch Input Tensor와 동일해야함)
-    - Mat --> Tensor
-        - <code>torch::from_blob(mat_image.data, {1, INPUTSIZE, INPUTSIZE, 3}, torch::ScalarType::Float).to(torch::kCUDA)</code>
+    - ResNet C++ Load
+        - Mat --> Tensor : <code>torch::from_blob(mat_image.data, {1, INPUTSIZE, INPUTSIZE, 3}, torch::ScalarType::Float).to(torch::kCUDA)</code>
         - <code>img_tensor.permute({ 0, 3, 1, 2 })</code>
         - (신기하게 mat -> tensor 변환과정에 바로 Input Shape에 맞춰 <code>{1, 3, INPUTSIZE, INPUTSIZE}</code>와 같이 사용하였는데, Input 형태가 달라져서 모델이 정상적으로 예측하지 않음
         그래서 위와 같이 permutation함. 이유는 모름...)
