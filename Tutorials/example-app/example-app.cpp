@@ -90,7 +90,7 @@ int main(int argc, const char* argv[])
 	std::string img_path;
 
 	if (argc != 3) {
-		model_path = "model/tuple_script_retinanet_0.pt";
+		model_path = "model/my_script.pt";
 		img_path = "img/1025.jpg";
 	}
 	else {
@@ -115,7 +115,10 @@ int main(int argc, const char* argv[])
 
 	cv::Mat img_float;
 	img.convertTo(img_float, CV_32F, 1.0f / 255.0f);
+
+	/////////////////////////////////////
 	// 여기서 normalization 해야할 것 같음...
+	/////////////////////////////////////
 
 	// Resize & Scaling
 	std::cout << "\n=== Resize & Scaling === \n";
@@ -138,7 +141,9 @@ int main(int argc, const char* argv[])
 	}
 	printf("after scale : %.14f\n", scale);
 
-	cv::resize(img_float, img_float, cv::Size((int)round(cols*scale), (int)round(rows*scale)));
+	int result_cols = (int)round(cols*scale);
+	int result_rows = (int)round(rows*scale);
+	cv::resize(img_float, img_float, cv::Size(result_cols, result_rows));
 
 
 	// Padding (Resize rows, cols)
@@ -193,33 +198,44 @@ int main(int argc, const char* argv[])
 	std::cout << "classification : " << classification.sizes() << std::endl;
 	std::cout << "transformed_anchors : "<< transformed_anchors.sizes() << std::endl;
 
-	int idxs = 0;
+
+	// idxs list (찾은 클래스 개수)
+	std::vector<int> idxs_vector;
 	for (int64_t i = 0; i < scores.size(0); i++) {
 		if (scores[i].item<float>() > 0.5) {
-			idxs = i;
+			idxs_vector.push_back(i);
 		}
 	}
-	std::cout << "idxs = " << idxs << std::endl;
 
-	// Torch Tensor ==> std::vector
-	//std::vector<float> vector_scores;
-	//for (int64_t i = 0; i < scores.size(0); i++) {
-	//	vector_scores.push_back(scores[i].item<float>());
-	//}
+	cv::Rect bbox;
+	cv::Mat result_img;
+	cv::resize(img, result_img, cv::Size(result_cols, result_rows));
+	for (int i = 0; i < idxs_vector.size(); i++)
+	{
+		int x1 = transformed_anchors[idxs_vector[i]][0].item<int>();
+		int y1 = transformed_anchors[idxs_vector[i]][1].item<int>();
+		int x2 = transformed_anchors[idxs_vector[i]][2].item<int>();
+		int y2 = transformed_anchors[idxs_vector[i]][3].item<int>();
+		int class_idx = classification[idxs_vector[i]].item<int>();
 
-	//// Search score > 0.5
-	//int idxs = 0;
-	//int cnt = 0;
-	//for (int i = 0; i < vector_scores.size(); i++)
-	//{
-	//	if (vector_scores[i] > 0.5) {
-	//		idxs = i;
-	//		cnt++;
-	//	}
-	//}
-	//std::cout << "idxs = " << idxs << std::endl;
-	//std::cout << "cnt = " << cnt << std::endl;
+		bbox.x = x1;
+		bbox.y = y1;
+		bbox.width = x2 - x1;
+		bbox.height = y2 - y1;
+		std::cout << "x, y, width, height => " <<
+			bbox.x << ", " <<
+			bbox.y << ", " <<
+			bbox.width << ", " <<
+			bbox.height << std::endl;
 
+		// Test
+		cv::rectangle(result_img, bbox, cv::Scalar(0, 0, 255));
+		cv::putText(result_img, std::to_string(class_idx), cv::Point(bbox.x - 5, bbox.y - 5), 0, 1, cv::Scalar(0, 0, 255));
+	}
+
+	cv::imshow("result image", result_img);
+	cv::waitKey();
+	cv::destroyAllWindows();
 
 
 	// Argmax
