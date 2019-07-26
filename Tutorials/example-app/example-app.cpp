@@ -117,7 +117,7 @@ int main(int argc, const char* argv[])
 	img.convertTo(img_float, CV_32F, 1.0f / 255.0f);
 
 	/////////////////////////////////////
-	// 여기서 normalization 해야할 것 같음...
+	// 여기서 normalization ??
 	/////////////////////////////////////
 
 	// Resize & Scaling
