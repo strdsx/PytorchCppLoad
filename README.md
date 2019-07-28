@@ -21,9 +21,8 @@
         - (신기하게 mat -> tensor 변환과정에 바로 Input Shape에 맞춰 <code>{1, 3, INPUTSIZE, INPUTSIZE}</code>와 같이 사용하였는데, Input 형태가 달라져서 모델이 정상적으로 예측하지 않음
         그래서 위와 같이 permutation함. 이유는 모름...)
     - RetinaNet C++ Load 진행중
-        - RetinaNet의 경우 Input Tensor 코드 구현중...
         - Input Image는 normalization - resize & scaling - padding --> Tensor로 변경
-        - **현재 코드는 resize, padding, Tensor로 변환 이후 normalization을 진행해서 input tensor형태가 다름 (zero padding이 안됨)**
+        - **현재 코드는 resize & scaling, padding --> Tensor 형태에서 Normalization 진행**
         - Output : Tuple(Tensor, Tensor, Tensor) --> 코드 참고
 
 
@@ -36,7 +35,7 @@
     - 저장 경로 : ResNetDLL/build/Release/..
 
 
-## DLL_Test : DLL Import
+## ResNetDLL_Test : DLL Import
 1. 생성된 ResNet.dll, ResNet.lib를 bin, lib 폴더에 저장 후 Visual Studio 에서 환경 경로 설정
 1. libtorch 환경도 **DLL Exports**와 동일하게 경로 설정
 1. Build가 성공하면 "DLL_Test/build/Release/"에 필요한 dll 파일 이동
