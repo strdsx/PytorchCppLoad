@@ -55,7 +55,6 @@ int Classifier::classify(cv::Mat img)
 	// inputs.emplace_back(img_tensor);
 	inputs.push_back(img_tensor);
 
-	// std::cout << img_tensor << std::endl;
 	std::cout << "\nSuccess Image Tensor load...\n";
 
 	// GPU, Torch Evaluation
