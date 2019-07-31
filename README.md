@@ -22,8 +22,9 @@
         그래서 위와 같이 permutation함. 이유는 모름...)
     - RetinaNet C++ Load 진행중
         - Input Image는 normalization - resize & scaling - padding --> Tensor로 변경
-        - **현재 코드는 resize & scaling, padding --> Tensor 형태에서 Normalization 진행**
+        - 현재 코드는 resize & scaling, padding --> Tensor 형태에서 Normalization 진행
         - Output : Tuple(Tensor, Tensor, Tensor) --> 코드 참고
+        - **RetinaNet의 경우 최종 Input rows의 형태가 padding, scaling... 등올 통해 달라 (input shape이 고정적이지 않음). <code>torch.jit.trace()</code>를 Script modul를 생성할 때 고정된 example_tensor가 들어가게 되므로, 해당 example_tensor와 동일한 형태의 image width, height를 갖는 이미지만 detection 가능함**
 
 
 ## ResNetDLL_Export
